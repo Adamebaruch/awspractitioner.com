@@ -1,0 +1,28 @@
+const express = require('express');
+const app = express();
+const port = 3000;
+
+// Sample questions
+const questions = [
+    {
+        text: 'What does S3 stand for?',
+        options: ['Simple Storage Service', 'Secure Storage Service', 'Simple Secure Storage', 'None of the above'],
+        correctAnswer: 'Simple Storage Service'
+    },
+    {
+        text: 'Which AWS service is used for compute capacity?',
+        options: ['Amazon RDS', 'Amazon EC2', 'Amazon S3', 'Amazon CloudFront'],
+        correctAnswer: 'Amazon EC2'
+    },
+    // Add more questions as needed
+];
+
+app.get('/api/random-aws-questions', (req, res) => {
+    const shuffledQuestions = questions.sort(() => 0.5 - Math.random());
+    const randomQuestions = shuffledQuestions.slice(0, 100); // Assuming you have at least 100 questions
+    res.json(randomQuestions);
+});
+
+app.listen(port, () => {
+    console.log(`AWS practice API running at http://localhost:${port}`);
+});

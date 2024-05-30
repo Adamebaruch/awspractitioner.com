@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Cloud Practitioner Practice Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .question { margin-bottom: 20px; }
+        .question h2 { margin-bottom: 10px; }
+        .question label { display: block; margin-bottom: 5px; }
+        .result { margin-top: 20px; padding: 10px; border: 1px solid #ccc; }
+        .correct { color: green; }
+        .incorrect { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AWS Cloud Practitioner Practice Test</h1>
+        <form id="practiceTest">
+            <!-- Questions will be injected here -->
+        </form>
+        <div id="results" class="result"></div>
+        <button type="button" onclick="submitTest()">Submit Test</button>
+        <button type="button" onclick="resetTest()">New Test</button>
+    </div>
+    <script>
+        const apiUrl = 'http://localhost:3003/api/random-aws-questions'; // Your local API endpoint
+
+        async function fetchQuestions() {
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+            return data;
+        }
+
+        function saveQuestions(questions) {
+            localStorage.setItem('questions', JSON.stringify(questions));
+        }
+
+        function loadQuestions() {
+            const questions = localStorage.getItem('questions');
+            return questions ? JSON.parse(questions) : null;
+        }
+
+        function displayQuestions(questions) {
+            const form = document.getElementById('practiceTest');
+            form.innerHTML = '';
+
+            questions.forEach((question, index) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.classList.add('question');
+                questionDiv.id = `question${index + 1}`;
+
+                questionDiv.innerHTML = `
+                    <h2>${index + 1}. ${question.text}</h2>
+                    ${question.options.map((option, i) => `
+                        <label>
+                            <input type="radio" name="q${index + 1}" value="${option}">
+                            ${String.fromCharCode(65 + i)}. ${option}
+                        </label>
+                    `).join('')}
+                    <p class="feedback"></p>
+                `;
+
+                form.appendChild(questionDiv);
+            });
+
+            // Add event listeners to radio buttons
+            const radioButtons = form.querySelectorAll('input[type="radio"]');
+            radioButtons.forEach(radio => {
+                radio.addEventListener('click', checkAnswer);
+            });
+        }
+
+        function checkAnswer(event) {
+            const selectedOption = event.target;
+            const questionDiv = selectedOption.closest('.question');
+            const feedbackElement = questionDiv.querySelector('.feedback');
+            const questionIndex = parseInt(selectedOption.name.slice(1)) - 1;
+
+            const questions = loadQuestions();
+            const correctAnswer = questions[questionIndex].correctAnswer;
+
+            if (selectedOption.value === correctAnswer) {
+                feedbackElement.textContent = 'Correct!';
+                feedbackElement.classList.add('correct');
+                feedbackElement.classList.remove('incorrect');
+            } else {
+                feedbackElement.textContent = `Incorrect. The correct answer is: ${correctAnswer}`;
+                feedbackElement.classList.add('incorrect');
+                feedbackElement.classList.remove('correct');
+            }
+        }
+
+        async function init() {
+            let questions = await fetchQuestions();
+            saveQuestions(questions);
+            displayQuestions(questions);
+        }
+
+        function submitTest() {
+            const form = document.getElementById('practiceTest');
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            let correctCount = 0;
+            let totalQuestions = form.elements.length / 4; // Assuming 4 options per question
+
+            for (let i = 1; i <= totalQuestions; i++) {
+                const questionName = 'q' + i;
+                const selectedOption = form.elements[questionName].value;
+                const questions = loadQuestions();
+                const correctAnswer = questions[i - 1].correctAnswer;
+
+                if (selectedOption === correctAnswer) {
+                    correctCount++;
+                }
+            }
+
+            const percentage = (correctCount / totalQuestions) * 100;
+            resultsDiv.innerHTML += `<p>You got ${correctCount} out of ${totalQuestions} correct (${percentage.toFixed(2)}%).</p>`;
+        }
+
+        function resetTest() {
+            // Clear all selected answers
+            const form = document.getElementById('practiceTest');
+            form.reset();
+
+            // Remove feedback and highlighting
+            const questions = document.querySelectorAll('.question');
+            questions.forEach(question => {
+                const feedbackElement = question.querySelector('.feedback');
+                if (feedbackElement) {
+                    feedbackElement.textContent = '';
+                }
+            });
+
+            // Clear results
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            // Fetch new questions and display them
+            init();
+        }
+
+        // Initialize the test
+        init();
+    </script>
+</body>
+</html>
