@@ -24,7 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Add timestamp parameter to prevent caching
             const timestamp = new Date().getTime();
-            const response = await fetch(`/api/random-aws-questions?count=10&t=${timestamp}`);
+            // Request 65 questions instead of the default
+            const response = await fetch(`/api/random-aws-questions?count=65&t=${timestamp}`);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -91,8 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const question = questions[questionIndex];
         const questionEl = questionElements[questionIndex];
         
-        // If already answered, don't do anything
-        if (question.answered) return;
+        // Allow changing answers - removed the check: if (question.answered) return;
         
         // Mark as answered
         question.answered = true;
@@ -379,6 +379,23 @@ document.addEventListener('DOMContentLoaded', () => {
     submitBtn.addEventListener('click', checkAnswers);
     
     newTestBtn.addEventListener('click', () => {
+        // FIXED: Clean up review container and stored results
+        // Remove any existing review container
+        const existingReview = document.getElementById('review-container');
+        if (existingReview) {
+            existingReview.remove();
+        }
+        
+        // Clear the stored test results
+        sessionStorage.removeItem('testResults');
+        
+        // Remove the review button from score container if it exists
+        const reviewBtn = document.getElementById('review-btn');
+        if (reviewBtn) {
+            reviewBtn.remove();
+        }
+        
+        // Reset the application state
         loadQuestions();
         scoreContainer.style.display = 'none';
         questionsContainer.style.display = 'block';
@@ -386,6 +403,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     retryBtn.addEventListener('click', () => {
+        // FIXED: Clean up review container and stored results
+        // Remove any existing review container
+        const existingReview = document.getElementById('review-container');
+        if (existingReview) {
+            existingReview.remove();
+        }
+        
+        // Clear the stored test results
+        sessionStorage.removeItem('testResults');
+        
+        // Remove the review button from score container if it exists
+        const reviewBtn = document.getElementById('review-btn');
+        if (reviewBtn) {
+            reviewBtn.remove();
+        }
+        
+        // Reset the application state
         loadQuestions();
         scoreContainer.style.display = 'none';
         questionsContainer.style.display = 'block';
