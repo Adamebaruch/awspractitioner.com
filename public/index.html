@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Cloud Practitioner Practice Test</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Add Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Optional: Add Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <!-- AWS logo (optional) -->
+            <img src="https://d1.awsstatic.com/training-and-certification/certification-badges/AWS-Certified-Cloud-Practitioner_badge.634f8a21af2e0e956ed8905a72366146ba22b74c.png" alt="AWS Cloud Practitioner" class="aws-logo">
+            <h1>AWS Cloud Practitioner Practice Test</h1>
+        </header>
+
+        <div class="progress-container">
+            <div class="progress-info">
+                <span id="question-number">0 of 10 Questions Answered</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress" id="progress-bar"></div>
+            </div>
+        </div>
+
+        <div id="questions-container">
+            <!-- Questions will be dynamically inserted here -->
+        </div>
+
+        <div class="button-container">
+            <button id="new-test-btn" class="secondary">
+                <i class="fas fa-sync"></i> New Test
+            </button>
+            <button id="submit-btn">
+                <i class="fas fa-check-circle"></i> Submit Test
+            </button>
+        </div>
+
+        <div id="score-container" class="score-container" style="display: none;">
+            <div class="score-label">Your Score</div>
+            <div id="score" class="score">0%</div>
+            <div id="score-details">0 out of 0 questions correct</div>
+            <button id="retry-btn" class="secondary" style="margin-top: 20px;">
+                <i class="fas fa-redo"></i> Try Again
+            </button>
+        </div>
+    </div>
+
+    <template id="question-template">
+        <div class="question-container">
+            <div class="question"></div>
+            <ul class="options"></ul>
+            <div class="feedback" style="display: none;"></div>
+        </div>
+    </template>
+
+    <script src="app.js"></script>
+</body>
+</html>
