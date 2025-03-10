@@ -15,9 +15,28 @@ document.addEventListener('DOMContentLoaded', () => {
     let correctAnswers = 0;
     let questionElements = [];
     
+    // Storage keys
+    const STORAGE_KEYS = {
+        QUESTIONS: 'aws_practice_questions',
+        TEST_STATE: 'aws_practice_test_state',
+        TEST_RESULTS: 'aws_practice_test_results'
+    };
+    
     // Load questions from API
     async function loadQuestions() {
         try {
+            // Check if we have stored questions first
+            const storedQuestions = getStoredQuestions();
+            
+            if (storedQuestions && storedQuestions.length > 0) {
+                questions = storedQuestions;
+                console.log("Loaded questions from localStorage:", questions.length);
+                renderQuestions();
+                updateProgress();
+                return;
+            }
+            
+            // If no stored questions, get from API
             // Clear existing questions first
             questions = [];
             questionsContainer.innerHTML = '';
@@ -32,7 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             questions = await response.json();
-            console.log("Loaded questions:", questions.length);
+            console.log("Loaded questions from API:", questions.length);
+            
+            // Save to localStorage
+            saveQuestions(questions);
             
             renderQuestions();
             updateProgress();
@@ -40,6 +62,28 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error loading questions:', error);
             questionsContainer.innerHTML = '<p>Error loading questions. Please try refreshing the page.</p>';
         }
+    }
+    
+    // Save questions to localStorage
+    function saveQuestions(questionsData) {
+        localStorage.setItem(STORAGE_KEYS.QUESTIONS, JSON.stringify(questionsData));
+    }
+    
+    // Get questions from localStorage
+    function getStoredQuestions() {
+        const storedQuestions = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
+        return storedQuestions ? JSON.parse(storedQuestions) : null;
+    }
+    
+    // Save test state (e.g., if the test was submitted)
+    function saveTestState(state) {
+        localStorage.setItem(STORAGE_KEYS.TEST_STATE, JSON.stringify(state));
+    }
+    
+    // Get test state from localStorage
+    function getTestState() {
+        const storedState = localStorage.getItem(STORAGE_KEYS.TEST_STATE);
+        return storedState ? JSON.parse(storedState) : { submitted: false };
     }
     
     // Render questions in the DOM
@@ -68,6 +112,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.textContent = option;
                 li.dataset.index = optionIndex;
                 
+                // Check if this option was previously selected
+                if (question.selectedOption === optionIndex) {
+                    li.classList.add('selected');
+                }
+                
                 li.addEventListener('click', () => selectOption(index, optionIndex));
                 
                 optionsList.appendChild(li);
@@ -75,6 +124,28 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Add feedback element
             const feedback = questionElement.querySelector('.feedback');
+            
+            // If test was submitted, show the feedback
+            const testState = getTestState();
+            if (testState.submitted && question.selectedOption !== undefined) {
+                const isCorrect = question.selectedOption === question.correctOption;
+                
+                // Show feedback
+                feedback.style.display = 'block';
+                feedback.textContent = isCorrect ? 
+                    'Correct! Good job!' : 
+                    `Incorrect. The correct answer is: ${question.options[question.correctOption]}`;
+                feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+                
+                // Mark options
+                optionsList.childNodes.forEach((option, optIndex) => {
+                    if (optIndex === question.correctOption) {
+                        option.classList.add('correct');
+                    } else if (optIndex === question.selectedOption && !isCorrect) {
+                        option.classList.add('incorrect');
+                    }
+                });
+            }
             
             // Store references to DOM elements for this question
             questionElements.push({
@@ -85,6 +156,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             questionsContainer.appendChild(questionElement);
         });
+        
+        // Check if test was already submitted and update UI accordingly
+        const testState = getTestState();
+        if (testState.submitted) {
+            submitBtn.style.display = 'none';
+            if (!scoreContainer.style.display || scoreContainer.style.display === 'none') {
+                checkAnswers(false); // Don't save results again, just display them
+            }
+        }
     }
     
     // Handle option selection
@@ -92,7 +172,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const question = questions[questionIndex];
         const questionEl = questionElements[questionIndex];
         
-        // Allow changing answers - removed the check: if (question.answered) return;
+        // Allow changing answers as long as test isn't submitted
+        const testState = getTestState();
+        if (testState.submitted) return;
         
         // Mark as answered
         question.answered = true;
@@ -106,12 +188,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // Mark selected option
         questionEl.optionElements[optionIndex].classList.add('selected');
         
+        // Save updated questions to localStorage
+        saveQuestions(questions);
+        
         // Update progress
         updateProgress();
     }
     
     // Check answers when submit button is clicked
-    function checkAnswers() {
+    function checkAnswers(saveResults = true) {
         correctAnswers = 0;
         const resultDetails = [];
         
@@ -160,8 +245,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        // Store results for review
-        sessionStorage.setItem('testResults', JSON.stringify(resultDetails));
+        // Mark test as submitted
+        if (saveResults) {
+            saveTestState({ submitted: true });
+            
+            // Store results for review
+            localStorage.setItem(STORAGE_KEYS.TEST_RESULTS, JSON.stringify(resultDetails));
+            sessionStorage.setItem('testResults', JSON.stringify(resultDetails));
+        } else {
+            // If not saving results, use the stored results
+            const storedResults = JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_RESULTS) || '[]');
+            correctAnswers = storedResults.filter(r => r.isCorrect).length;
+        }
         
         // Show score
         const scorePercentage = Math.round((correctAnswers / questions.length) * 100);
@@ -190,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Show detailed review of all questions and answers
     function showResultsReview() {
         // Get stored results
-        const resultDetails = JSON.parse(sessionStorage.getItem('testResults'));
+        const resultDetails = JSON.parse(localStorage.getItem(STORAGE_KEYS.TEST_RESULTS) || sessionStorage.getItem('testResults') || '[]');
         if (!resultDetails || resultDetails.length === 0) {
             alert('No test results available to review.');
             return;
@@ -375,56 +470,37 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.disabled = answeredCount === 0;
     }
     
+    // Reset test data and start a new test
+    function startNewTest() {
+        // Clear all stored data
+        localStorage.removeItem(STORAGE_KEYS.QUESTIONS);
+        localStorage.removeItem(STORAGE_KEYS.TEST_STATE);
+        localStorage.removeItem(STORAGE_KEYS.TEST_RESULTS);
+        sessionStorage.removeItem('testResults');
+        
+        // Remove any existing review container
+        const existingReview = document.getElementById('review-container');
+        if (existingReview) {
+            existingReview.remove();
+        }
+        
+        // Remove the review button from score container if it exists
+        const reviewBtn = document.getElementById('review-btn');
+        if (reviewBtn) {
+            reviewBtn.remove();
+        }
+        
+        // Reset the application state
+        loadQuestions();
+        scoreContainer.style.display = 'none';
+        questionsContainer.style.display = 'block';
+        submitBtn.style.display = 'block';
+    }
+    
     // Event listeners
-    submitBtn.addEventListener('click', checkAnswers);
-    
-    newTestBtn.addEventListener('click', () => {
-        // FIXED: Clean up review container and stored results
-        // Remove any existing review container
-        const existingReview = document.getElementById('review-container');
-        if (existingReview) {
-            existingReview.remove();
-        }
-        
-        // Clear the stored test results
-        sessionStorage.removeItem('testResults');
-        
-        // Remove the review button from score container if it exists
-        const reviewBtn = document.getElementById('review-btn');
-        if (reviewBtn) {
-            reviewBtn.remove();
-        }
-        
-        // Reset the application state
-        loadQuestions();
-        scoreContainer.style.display = 'none';
-        questionsContainer.style.display = 'block';
-        submitBtn.style.display = 'block';
-    });
-    
-    retryBtn.addEventListener('click', () => {
-        // FIXED: Clean up review container and stored results
-        // Remove any existing review container
-        const existingReview = document.getElementById('review-container');
-        if (existingReview) {
-            existingReview.remove();
-        }
-        
-        // Clear the stored test results
-        sessionStorage.removeItem('testResults');
-        
-        // Remove the review button from score container if it exists
-        const reviewBtn = document.getElementById('review-btn');
-        if (reviewBtn) {
-            reviewBtn.remove();
-        }
-        
-        // Reset the application state
-        loadQuestions();
-        scoreContainer.style.display = 'none';
-        questionsContainer.style.display = 'block';
-        submitBtn.style.display = 'block';
-    });
+    submitBtn.addEventListener('click', () => checkAnswers(true));
+    newTestBtn.addEventListener('click', startNewTest);
+    retryBtn.addEventListener('click', startNewTest);
     
     // Initialize
     loadQuestions();
